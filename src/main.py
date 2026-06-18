@@ -11,6 +11,11 @@ def parse_args():
         description="Утилита сканирует папку и показывает структуру проекта."
     )
     parser.add_argument("path", help="Путь к папке для сканирования")
+    parser.add_argument(
+        "--backup",
+        default=None,
+        help="Путь к резервной копии для сравнения"
+    )
     return parser.parse_args()
 
 
@@ -86,9 +91,47 @@ def print_duplicates(duplicates):
         print("  Дубликаты не найдены.")
 
 
+def compare_folders(entries_src, entries_backup, root_src, root_backup):
+    src_files = {rel_path: (size, mtime) for rel_path, entry_type, size, mtime in entries_src if entry_type == "FILE"}
+    backup_files = {rel_path: (size, mtime) for rel_path, entry_type, size, mtime in entries_backup if entry_type == "FILE"}
+
+    missing = set(src_files.keys()) - set(backup_files.keys())
+    extra = set(backup_files.keys()) - set(src_files.keys())
+    changed = []
+
+    for path in src_files.keys() & backup_files.keys():
+        if src_files[path] != backup_files[path]:
+            changed.append(path)
+
+    return {"missing": missing, "extra": extra, "changed": changed}
+
+
+def print_comparison(comparison):
+    print("\nСравнение с резервной копией:")
+    missing = comparison["missing"]
+    extra = comparison["extra"]
+    changed = comparison["changed"]
+
+    if missing:
+        print("  Отсутствуют в бэкапе:")
+        for path in sorted(missing):
+            print(f"    - {path}")
+    if extra:
+        print("  Лишние в бэкапе:")
+        for path in sorted(extra):
+            print(f"    - {path}")
+    if changed:
+        print("  Изменены:")
+        for path in sorted(changed):
+            print(f"    - {path}")
+    if not missing and not extra and not changed:
+        print("  Папки идентичны.")
+
+
 def main():
     args = parse_args()
     path = args.path
+    backup_path = args.backup
 
     if not os.path.exists(path):
         print(f"Ошибка: путь не найден: {path}", file=sys.stderr)
@@ -102,6 +145,18 @@ def main():
     print_structure(root_path, entries)
     duplicates = collect_duplicates(root_path, entries)
     print_duplicates(duplicates)
+
+    if backup_path:
+        if not os.path.exists(backup_path):
+            print(f"Ошибка: путь к бэкапу не найден: {backup_path}", file=sys.stderr)
+            sys.exit(1)
+        if not os.path.isdir(backup_path):
+            print(f"Ошибка: путь к бэкапу не папка: {backup_path}", file=sys.stderr)
+            sys.exit(1)
+        root_backup = os.path.abspath(backup_path)
+        entries_backup = collect_structure(root_backup)
+        comparison = compare_folders(entries, entries_backup, root_path, root_backup)
+        print_comparison(comparison)
 
 
 if __name__ == "__main__":
