@@ -1,3 +1,7 @@
+import os
+from hashing import compute_hash
+
+
 def compare_folders(entries_src, entries_backup, root_src, root_backup):
     src_files = {rel_path: (size, mtime) for rel_path, entry_type, size, mtime in entries_src if entry_type == "FILE"}
     backup_files = {rel_path: (size, mtime) for rel_path, entry_type, size, mtime in entries_backup if entry_type == "FILE"}
@@ -6,8 +10,17 @@ def compare_folders(entries_src, entries_backup, root_src, root_backup):
     extra = set(backup_files.keys()) - set(src_files.keys())
     changed = []
 
-    for path in src_files.keys() & backup_files.keys():
-        if src_files[path] != backup_files[path]:
+    common = set(src_files.keys()) & set(backup_files.keys())
+    for path in sorted(common):
+        src_full = os.path.join(root_src, path)
+        backup_full = os.path.join(root_backup, path)
+        try:
+            src_hash = compute_hash(src_full)
+            backup_hash = compute_hash(backup_full)
+        except OSError:
+            changed.append(path)
+            continue
+        if src_hash != backup_hash:
             changed.append(path)
 
     return {"missing": missing, "extra": extra, "changed": changed}
