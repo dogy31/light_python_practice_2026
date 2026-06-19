@@ -11,4 +11,9 @@ def parse_args():
         default=None,
         help="Путь к резервной копии для сравнения"
     )
+    parser.add_argument(
+        "--filter",
+        default=None,
+        help="Фильтр по расширениям (comma-separated, без точки), например: 'py,txt'"
+    )
     return parser.parse_args()

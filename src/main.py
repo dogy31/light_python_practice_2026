@@ -21,7 +21,7 @@ def main():
         sys.exit(1)
 
     root_path = os.path.abspath(path)
-    entries = collect_structure(root_path)
+    entries = collect_structure(root_path, ext_filter=args.filter)
     print_structure(root_path, entries)
     duplicates = collect_duplicates(root_path, entries)
     print_duplicates(duplicates)
@@ -34,7 +34,7 @@ def main():
             print(f"Ошибка: путь к бэкапу не папка: {backup_path}", file=sys.stderr)
             sys.exit(1)
         root_backup = os.path.abspath(backup_path)
-        entries_backup = collect_structure(root_backup)
+        entries_backup = collect_structure(root_backup, ext_filter=args.filter)
         comparison = compare_folders(entries, entries_backup, root_path, root_backup)
         print_comparison(comparison)
 
